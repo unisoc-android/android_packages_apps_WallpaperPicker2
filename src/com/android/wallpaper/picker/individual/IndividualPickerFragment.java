@@ -373,6 +373,18 @@ public class IndividualPickerFragment extends Fragment
         mAdapter = new IndividualAdapter(mWallpapers);
         mImageGrid.setAdapter(mAdapter);
         mImageGrid.setLayoutManager(new GridLayoutManager(getActivity(), getNumColumns()));
+        if (mImageGrid.getFitsSystemWindows()) {
+            setImageGridPadding();
+        }
+    }
+
+    void setImageGridPadding() {
+        mImageGrid.setOnApplyWindowInsetsListener((view, windowInsets) -> {
+            // Make the view padding setting in xml valid finally.
+            view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(),
+                    view.getPaddingBottom());
+            return windowInsets;
+        });
     }
 
     /**

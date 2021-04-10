@@ -20,7 +20,8 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         debug {
@@ -38,6 +39,10 @@ android {
         }
     }
 
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+
     sourceSets {
         main {
             java.srcDirs = ["src", "src_override"]
@@ -49,6 +54,12 @@ android {
             res.srcDirs = ["tests/res"]
             java.srcDirs = ["tests/src"]
             manifest.srcFile "tests/AndroidManifest.xml"
+        }
+
+        test {
+            res.srcDirs = ['robolectric_tests/res']
+            java.srcDirs = ['robolectric_tests/src']
+            resources.srcDirs = ['robolectric_tests/robolectric_gradle_config']
         }
     }
 
@@ -86,13 +97,18 @@ dependencies {
     implementation 'com.github.bumptech.glide:gifdecoder:SNAPSHOT'
     implementation 'com.davemorrissey.labs:subsampling-scale-image-view:3.9.0'
 
-    androidTestImplementation('junit:junit:4.12')
-    androidTestImplementation('com.android.support.test:runner:1.0.1')
-    androidTestImplementation('org.robolectric:robolectric:3.4.2') {
+    testImplementation('junit:junit:4.12')
+    testImplementation('org.robolectric:robolectric:4.3.1') {
         exclude group: 'xmlpull'
     }
-    androidTestImplementation('com.thoughtworks.xstream:xstream:1.4.8');
+    testImplementation('org.mockito:mockito-core:1.10.19')
+    testImplementation('androidx.test:core:1.2.0')
+
+    androidTestImplementation('junit:junit:4.12')
+    androidTestImplementation('com.android.support.test:runner:1.0.1')
+
     androidTestImplementation 'org.mockito:mockito-core:1.10.19'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-intents:3.0.1'
+    androidTestImplementation 'com.android.support.test.uiautomator:uiautomator-v18:2.1.2'
 }

@@ -64,9 +64,11 @@ public class PreviewActivity extends BasePreviewActivity {
                     wallpaper,
                     PreviewFragment.MODE_CROP_AND_SET_WALLPAPER,
                     testingModeEnabled);
-            fm.beginTransaction()
-                    .add(R.id.fragment_container, fragment)
-                    .commit();
+            if (!fm.isStateSaved()) {
+                fm.beginTransaction()
+                        .add(R.id.fragment_container, fragment)
+                        .commit();
+            }
         }
     }
 

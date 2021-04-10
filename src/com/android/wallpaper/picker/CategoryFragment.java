@@ -67,6 +67,7 @@ import com.android.wallpaper.module.WallpaperRotationRefresher;
 import com.android.wallpaper.module.WallpaperRotationRefresher.Listener;
 import com.android.wallpaper.picker.MyPhotosStarter.MyPhotosStarterProvider;
 import com.android.wallpaper.picker.MyPhotosStarter.PermissionChangedListener;
+import com.android.wallpaper.util.ActivityUtils;
 import com.android.wallpaper.util.DisplayMetricsRetriever;
 import com.android.wallpaper.util.ScreenSizeCalculator;
 import com.android.wallpaper.util.TileSizeCalculator;
@@ -129,6 +130,9 @@ public class CategoryFragment extends ToolbarFragment {
     private ProgressDialog mRefreshWallpaperProgressDialog;
     private boolean mTestingMode;
 
+    private boolean mIsMultiWindow;
+    private boolean mIsLandscape;
+
     public CategoryFragment() {
     }
 
@@ -136,6 +140,9 @@ public class CategoryFragment extends ToolbarFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mAdapter = new CategoryAdapter(mCategories);
+
+        mIsMultiWindow = getActivity().isInMultiWindowMode();
+        mIsLandscape = ActivityUtils.isLandscape();
     }
 
     @Override
@@ -855,6 +862,8 @@ public class CategoryFragment extends ToolbarFragment {
         private ImageView mOverlayIconView;
         private TextView mTitleView;
 
+        private boolean mPermissionGrantedClicked;
+
         public CategoryHolder(View itemView) {
             super(itemView);
             itemView.setOnClickListener(this);
@@ -863,6 +872,12 @@ public class CategoryFragment extends ToolbarFragment {
             mImageView = itemView.findViewById(R.id.image);
             mOverlayIconView = itemView.findViewById(R.id.overlay_icon);
             mTitleView = itemView.findViewById(R.id.category_title);
+            if (mIsMultiWindow && mIsLandscape) {
+                int paddingVertical = getActivity().getResources()
+                        .getDimensionPixelSize(R.dimen.grid_item_category_label_padding_in_land_multi_window);
+                mTitleView.setPadding(mTitleView.getPaddingLeft(), paddingVertical,
+                        mTitleView.getPaddingRight(), paddingVertical);
+            }
 
             mTileLayout.getLayoutParams().height = mTileSizePx.y;
         }
@@ -878,6 +893,7 @@ public class CategoryFragment extends ToolbarFragment {
                         new PermissionChangedListener() {
                             @Override
                             public void onPermissionsGranted() {
+                                mPermissionGrantedClicked = true;
                                 drawThumbnailAndOverlayIcon();
                             }
 
@@ -929,6 +945,12 @@ public class CategoryFragment extends ToolbarFragment {
                         .load(nullObj)
                         .into(mImageView);
 
+                if (mPermissionGrantedClicked) {
+                    // The permission has been granted, so change the "permission needed" warning UI
+                    // to be the current wallpaper UI
+                    mPermissionGrantedClicked = false;
+                    mAdapter.notifyItemChanged(INITIAL_HOLDER_ADAPTER_POSITION);
+                }
             }
         }
     }

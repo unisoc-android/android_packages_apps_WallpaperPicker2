@@ -31,6 +31,8 @@ import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.widget.ImageView;
 
+import com.android.wallpaper.util.UtilitiesExt;
+
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.request.RequestOptions;
@@ -69,20 +71,20 @@ public final class BuiltInWallpaperAsset extends Asset {
     public void decodeBitmapRegion(Rect rect, int targetWidth, int targetHeight,
                                    BitmapReceiver receiver) {
         DecodeBitmapRegionAsyncTask task = new DecodeBitmapRegionAsyncTask(rect, receiver);
-        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        UtilitiesExt.executeAsyncTask(task);
     }
 
     @Override
     public void decodeRawDimensions(Activity unused, DimensionsReceiver receiver) {
         DecodeDimensionsAsyncTask task = new DecodeDimensionsAsyncTask(receiver);
-        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        UtilitiesExt.executeAsyncTask(task);
     }
 
     @Override
     public void decodeBitmap(int targetWidth, int targetHeight,
                              BitmapReceiver receiver) {
         DecodeBitmapAsyncTask task = new DecodeBitmapAsyncTask(targetWidth, targetHeight, receiver);
-        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        UtilitiesExt.executeAsyncTask(task);
     }
 
     @Override

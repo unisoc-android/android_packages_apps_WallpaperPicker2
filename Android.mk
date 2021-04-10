@@ -137,6 +137,16 @@ else
   LOCAL_SDK_VERSION := system_current
 endif
 LOCAL_PACKAGE_NAME := WallpaperPicker2
+LOCAL_OVERRIDES_PACKAGES := WallpaperPicker
+LOCAL_REQUIRED_MODULES := \
+    WallpaperConfigOverlay \
+    android.software.wallpaper.xml
 LOCAL_JETIFIER_ENABLED := true
 
+LOCAL_PRIVILEGED_MODULE := true
+LOCAL_PRODUCT_MODULE := true
+
 include $(BUILD_PACKAGE)
+
+###############################################################################
+include $(call all-makefiles-under,$(LOCAL_PATH))

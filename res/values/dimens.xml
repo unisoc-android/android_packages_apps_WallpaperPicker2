@@ -22,6 +22,8 @@
 
     <!-- Dimensions for "category" tiles. -->
     <dimen name="grid_item_category_label_padding">12dp</dimen>
+    <dimen name="grid_item_category_label_padding_in_land_multi_window">2dp</dimen>
+    <dimen name="grid_item_category_label_horizontal_padding">16dp</dimen>
     <dimen name="grid_item_category_overlay_icon_margin_bottom">24dp</dimen>
     <dimen name="grid_item_category_title_height">48dp</dimen>
     <dimen name="grid_tile_aspect_height">340dp</dimen>
@@ -178,4 +180,5 @@
     <dimen name="disabled_by_admin_desktop_message_text_size">13sp</dimen>
     <dimen name="preview_bottom_sheet_corner_radius">?android:attr/dialogCornerRadius</dimen>
 
+    <dimen name="bottom_sheet_corner_radius">2dp</dimen>
 </resources>

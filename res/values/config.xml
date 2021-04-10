@@ -14,5 +14,7 @@
      limitations under the License.
 -->
 <resources>
-    <bool name="enable_no_backup_image_wallpaper">true</bool>
+    <bool name="enable_no_backup_image_wallpaper">false</bool>
+
+    <bool name="is_launcher_enabled">false</bool>
 </resources>

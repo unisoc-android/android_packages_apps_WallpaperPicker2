@@ -24,6 +24,7 @@ import android.database.Cursor;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.util.Log;
 
 import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.ContentUriAsset;
@@ -75,20 +76,29 @@ public class ImageCategory extends Category {
                 MediaStore.Images.ImageColumns.DATE_TAKEN,
         };
         String sortOrder = MediaStore.Images.ImageColumns.DATE_TAKEN + " DESC LIMIT 1";
-        Cursor cursor = context.getContentResolver().query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                null /* selection */,
-                null /* selectionArgs */,
-                sortOrder);
-
+        Cursor cursor = null;
         Asset asset = null;
-        if (cursor != null) {
-            if (cursor.moveToNext()) {
-                asset = new ContentUriAsset(context,
-                        Uri.parse(MediaStore.Images.Media.EXTERNAL_CONTENT_URI + "/" + cursor.getString(0)));
+
+        try {
+            cursor = context.getContentResolver().query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    null /* selection */,
+                    null /* selectionArgs */,
+                    sortOrder);
+
+            if (cursor != null) {
+                if (cursor.moveToNext()) {
+                    asset = new ContentUriAsset(context,
+                            Uri.parse(MediaStore.Images.Media.EXTERNAL_CONTENT_URI + "/" + cursor.getString(0)));
+                }
             }
-            cursor.close();
+        } catch (Exception e) {
+            Log.w("ImageCategory", "Get thumbnails failed from external storage!", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
         }
 
         return asset;

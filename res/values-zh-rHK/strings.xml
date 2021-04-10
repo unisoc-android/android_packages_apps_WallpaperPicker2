@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"桌布類別"</string>
-    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"設定「桌布」"</string>
+    <string name="set_wallpaper_button_text" msgid="4426286890442731310">"設定桌布"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"正在設定桌布…"</string>
     <string name="try_again" msgid="8278874823700921234">"再試一次"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"無法設定桌布。"</string>
@@ -37,8 +37,8 @@
     <string name="set_wallpaper_lock_screen_destination" msgid="6224685559375417945">"上鎖畫面"</string>
     <string name="set_wallpaper_both_destination" msgid="6967226064958263939">"主畫面和上鎖畫面"</string>
     <string name="no_backup_image_wallpaper_label" msgid="6316627676107284851">"正在輪替顯示圖片桌布"</string>
-    <string name="permission_needed_explanation" msgid="139166837541426823">"如要在此顯示目前的桌布，「<xliff:g id="APP_NAME">%1$s</xliff:g>」需要存取您裝置的儲存空間。"</string>
-    <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"如要在此顯示目前的桌布，「桌布」需要存取您裝置的儲存空間。\n\n如要變更此設定，請前往「桌布」應用程式資訊的「權限」部分。"</string>
+    <string name="permission_needed_explanation" msgid="139166837541426823">"如要在此顯示目前的桌布，<xliff:g id="APP_NAME">%1$s</xliff:g>需要存取您裝置的儲存空間。"</string>
+    <string name="permission_needed_explanation_go_to_settings" msgid="3923551582092599609">"如要在此顯示目前的桌布，桌布需要存取您裝置的儲存空間。\n\n如要變更此設定，請前往桌布應用程式資訊的權限部分。"</string>
     <string name="permission_needed_allow_access_button_label" msgid="1943133660612924306">"允許存取"</string>
     <string name="no_backup_image_wallpaper_description" msgid="8303268619408738057">"動態桌布服務可輪替顯示桌布"</string>
     <string name="daily_refresh_tile_title" msgid="3270456074558525091">"每日桌布"</string>

@@ -17,16 +17,22 @@ package com.android.wallpaper.asset;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.text.TextUtils;
 import android.util.Log;
 import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
+
+import com.android.wallpaper.config.Flags;
+import com.android.wallpaper.util.UriUtil;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
@@ -55,6 +61,9 @@ public final class ContentUriAsset extends StreamableAsset {
 
     private ExifInterfaceCompat mExifCompat;
     private int mExifOrientation;
+
+    private String mMimeType;
+    private String mPath;
 
     /**
      * @param context The application's context.
@@ -112,11 +121,28 @@ public final class ContentUriAsset extends StreamableAsset {
     @Override
     public void decodeBitmapRegion(final Rect rect, int targetWidth, int targetHeight,
                                    final BitmapReceiver receiver) {
+        if (!Build.TYPE.equals("user") || Flags.DEBUG) {
+            if (TextUtils.isEmpty(mPath)) {
+                mPath = UriUtil.getAbsolutePath(mContext, mUri);
+            }
+            Log.d(TAG, "decodeBitmapRegion: path = " + mPath);
+        }
+
         // BitmapRegionDecoder only supports images encoded in either JPEG or PNG, so if the content
         // URI asset is encoded with another format (for example, GIF), then fall back to cropping a
         // bitmap region from the full-sized bitmap.
         if (isJpeg() || isPng()) {
-            super.decodeBitmapRegion(rect, targetWidth, targetHeight, receiver);
+            Rect scaledCropRect = rect;
+            if (Float.compare(mScale, 1.0f) != 0) {
+                // The preview image has been zoomed in to reduce the memory usage, so update the image
+                // area. Make sure that the area in the raw image looks the same to that in preview view.
+                scaledCropRect = new Rect(
+                        Math.round((float) rect.left / mScale),
+                        Math.round((float) rect.top / mScale),
+                        Math.round((float) rect.right / mScale),
+                        Math.round((float) rect.bottom / mScale));
+            }
+            super.decodeBitmapRegion(scaledCropRect, targetWidth, targetHeight, receiver);
             return;
         }
 
@@ -152,16 +178,37 @@ public final class ContentUriAsset extends StreamableAsset {
      * Returns whether this image is encoded in the JPEG file format.
      */
     public boolean isJpeg() {
-        String mimeType = mContext.getContentResolver().getType(mUri);
-        return mimeType != null && mimeType.equals(JPEG_MIME_TYPE);
+//        String mimeType = mContext.getContentResolver().getType(mUri);
+//        return mimeType != null && mimeType.equals(JPEG_MIME_TYPE);
+        // The mime type from uri is wrong sometimes, so get the real mime type by decoding
+        // the image.
+        return JPEG_MIME_TYPE.equals(getMimeType());
     }
 
     /**
      * Returns whether this image is encoded in the PNG file format.
      */
     public boolean isPng() {
-        String mimeType = mContext.getContentResolver().getType(mUri);
-        return mimeType != null && mimeType.equals(PNG_MIME_TYPE);
+//        String mimeType = mContext.getContentResolver().getType(mUri);
+//        return mimeType != null && mimeType.equals(PNG_MIME_TYPE);
+        // The mime type from uri is wrong sometimes, so get the real mime type by decoding
+        // the image.
+        return PNG_MIME_TYPE.equals(getMimeType());
+    }
+
+    private String getMimeType() {
+        if (TextUtils.isEmpty(mMimeType)) {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            InputStream inputStream = openInputStream();
+
+            if (inputStream != null) {
+                BitmapFactory.decodeStream(inputStream, null, options);
+                closeInputStream(inputStream, "Unable to close input stream used to get uri mime type!");
+            }
+            mMimeType = options.outMimeType != null ? options.outMimeType : "";
+        }
+        return mMimeType;
     }
 
     /**
@@ -206,6 +253,9 @@ public final class ContentUriAsset extends StreamableAsset {
             return mContext.getContentResolver().openInputStream(mUri);
         } catch (FileNotFoundException e) {
             Log.w(TAG, "Image file not found", e);
+            return null;
+        } catch (SecurityException|IllegalArgumentException e) {
+            Log.w(TAG, "Could not read the image", e);
             return null;
         }
     }
@@ -300,6 +350,12 @@ public final class ContentUriAsset extends StreamableAsset {
         @Override
         protected Bitmap doInBackground(Void... unused) {
             if (mFromBitmap == null) {
+                return null;
+            }
+
+            Rect tmpRect = new Rect(0, 0, mFromBitmap.getWidth(), mFromBitmap.getHeight());
+            if (!tmpRect.contains(mCropRect) || mCropRect.isEmpty()) {
+                Log.w(TAG, "Crop bitmap error: mCropRect = " + mCropRect + ", tmpRect = " + tmpRect);
                 return null;
             }
 

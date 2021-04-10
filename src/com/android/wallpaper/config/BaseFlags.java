@@ -15,10 +15,18 @@
  */
 package com.android.wallpaper.config;
 
+import com.android.wallpaper.util.SystemPropertiesUtils;
+
 abstract class BaseFlags {
     public static boolean skipDailyWallpaperButtonEnabled = true;
     public static boolean desktopUiEnabled = false;
     public static boolean dynamicStartRotationTileEnabled = true;
     public static boolean stagingBackdropContentEnabled = false;
     public static boolean performanceMonitoringEnabled = true;
+
+    public static final boolean SPRD_ENABLE_LOCK_WALLPAPER =
+            SystemPropertiesUtils.getBoolean("ro.lockwallpaper.enable", true);
+
+    public static final boolean DEBUG =
+            SystemPropertiesUtils.getBoolean("persist.sys.wallpaper.debug", false);
 }

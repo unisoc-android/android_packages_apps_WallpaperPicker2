@@ -16,7 +16,9 @@
 package com.android.wallpaper.picker;
 
 import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_COLLAPSED;
+import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_DRAGGING;
 import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED;
+import static com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_SETTLING;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -39,6 +41,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.Display;
@@ -70,6 +73,7 @@ import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.Asset.BitmapReceiver;
 import com.android.wallpaper.asset.Asset.DimensionsReceiver;
 import com.android.wallpaper.compat.BuildCompat;
+import com.android.wallpaper.config.Flags;
 import com.android.wallpaper.model.LiveWallpaperInfo;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.ExploreIntentChecker;
@@ -138,6 +142,13 @@ public class PreviewFragment extends Fragment implements
 
     @PreviewMode
     private int mPreviewMode;
+
+    // Minimum time between two click events on the set wallpaper button in the bottom sheet dialog.
+    private static final int MIN_WALLPAPER_SET_TIME = 1000;
+
+    private long mLastClickTime;
+    private boolean mIsWallpaperDialogShowing;
+    private boolean mIsWallpaperSetting;
 
     /**
      * When true, enables a test mode of operation -- in which certain UI features are disabled to
@@ -230,9 +241,18 @@ public class PreviewFragment extends Fragment implements
                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                         | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
 
-        List<String> attributions = mWallpaper.getAttributions(activity);
-        if (attributions.size() > 0 && attributions.get(0) != null) {
-            activity.setTitle(attributions.get(0));
+        // It is unused to set the activity title, so remove it to avoid ANR.
+//        List<String> attributions = mWallpaper.getAttributions(activity);
+//        if (attributions.size() > 0 && attributions.get(0) != null) {
+//            activity.setTitle(attributions.get(0));
+//        }
+
+        Fragment fg = getFragmentManager()
+                .findFragmentByTag(WallpaperSetter.TAG_SET_WALLPAPER_DIALOG_FRAGMENT);
+        if (fg instanceof SetWallpaperDialogFragment) {
+            // The activity and fragment of the {@link SetWallpaperDialogFragment} has been recreated,
+            // so update its listener.
+            ((SetWallpaperDialogFragment) fg).setListener(this);
         }
     }
 
@@ -286,7 +306,27 @@ public class PreviewFragment extends Fragment implements
         // Workaround as we don't have access to bottomDialogCornerRadius, mBottomSheet radii are
         // set to dialogCornerRadius by default.
         GradientDrawable bottomSheetBackground = (GradientDrawable) mBottomSheet.getBackground();
-        float[] radii = bottomSheetBackground.getCornerRadii();
+        float[] radii;
+        try {
+            radii = bottomSheetBackground.getCornerRadii();
+        } catch (NullPointerException e) {
+            Log.w(TAG, "onCreateView: Null pointer error!");
+
+            /**
+             * Workaround as the mGradientState.mRadiusArray object in
+             * {@link android.graphics.drawable.GradientDrawable} may be null for unknown reason.
+             * The following corner radii should be consistent with that in preview_bottom_sheet_background.xml
+              */
+            float topLeftRadius = getResources().getDimension(R.dimen.bottom_sheet_corner_radius);
+            float topRightRadius = topLeftRadius;
+            float bottomRightRadius = 0f;
+            float bottomLeftRadius = 0f;
+            radii = new float[] {
+                    topLeftRadius, topLeftRadius,
+                    topRightRadius, topRightRadius,
+                    bottomRightRadius, bottomRightRadius,
+                    bottomLeftRadius, bottomLeftRadius};
+        }
         for (int i = 0; i < radii.length; i++) {
             radii[i]*=2f;
         }
@@ -376,6 +416,10 @@ public class PreviewFragment extends Fragment implements
                 ? STATE_EXPANDED
                 : savedInstanceState.getInt(KEY_BOTTOM_SHEET_STATE,
                         STATE_EXPANDED);
+        if (mBottomSheetInitialState == STATE_DRAGGING
+                || mBottomSheetInitialState == STATE_SETTLING) {
+            mBottomSheetInitialState = STATE_EXPANDED;
+        }
         setUpBottomSheetListeners();
 
         return view;
@@ -463,7 +507,18 @@ public class PreviewFragment extends Fragment implements
 
     @Override
     public void onSet(int destination) {
+        mIsWallpaperSetting = true;
         setCurrentWallpaper(destination);
+    }
+
+    @Override
+    public void onDialogAttached() {
+        mIsWallpaperDialogShowing = true;
+    }
+
+    @Override
+    public void onDialogDetached() {
+        mIsWallpaperDialogShowing = false;
     }
 
     @Override
@@ -498,11 +553,26 @@ public class PreviewFragment extends Fragment implements
     }
 
     private void onSetWallpaperClicked(View button) {
-        if (BuildCompat.isAtLeastN()) {
+        long curTime = SystemClock.uptimeMillis();
+        if (curTime - mLastClickTime < MIN_WALLPAPER_SET_TIME) {
+            Log.w(TAG, "Invalid click events for wallpaper setting!");
+            return;
+        }
+
+        if (mIsWallpaperDialogShowing || mIsWallpaperSetting) {
+            Log.w(TAG, "onSetWallpaperClicked: mIsWallpaperDialogShowing = "
+                    + mIsWallpaperDialogShowing +", mIsWallpaperSetting = " + mIsWallpaperSetting);
+            return;
+        }
+
+        mLastClickTime = curTime;
+        boolean isAtLeastN = BuildCompat.isAtLeastN();
+        if (Flags.SPRD_ENABLE_LOCK_WALLPAPER && isAtLeastN) {
             mWallpaperSetter.requestDestination(getContext(), getFragmentManager(), this,
                     mWallpaper instanceof LiveWallpaperInfo);
         } else {
-            setCurrentWallpaper(WallpaperPersister.DEST_HOME_SCREEN);
+            setCurrentWallpaper(isAtLeastN ?
+                    WallpaperPersister.DEST_BOTH : WallpaperPersister.DEST_HOME_SCREEN);
         }
     }
 
@@ -694,6 +764,8 @@ public class PreviewFragment extends Fragment implements
 
                             setDefaultWallpaperZoomAndScroll();
                             crossFadeInMosaicView();
+
+                            blackBitmap.recycle();
                         }
                         if (mProgressDrawable != null) {
                             mProgressDrawable.stop();
@@ -782,10 +854,12 @@ public class PreviewFragment extends Fragment implements
     protected Rect calculateCropRect() {
         // Calculate Rect of wallpaper in physical pixel terms (i.e., scaled to current zoom).
         float wallpaperZoom = mFullResImageView.getScale();
+        Log.d(TAG, "Raw wallpaper size = " + mRawWallpaperSize + " , wallpaper scale = " + wallpaperZoom);
         int scaledWallpaperWidth = (int) (mRawWallpaperSize.x * wallpaperZoom);
         int scaledWallpaperHeight = (int) (mRawWallpaperSize.y * wallpaperZoom);
         Rect rect = new Rect();
         mFullResImageView.visibleFileRect(rect);
+        Log.d(TAG, "Original visible wallpaper cropRect = " + rect);
         int scrollX = (int) (rect.left * wallpaperZoom);
         int scrollY = (int) (rect.top * wallpaperZoom);
 
@@ -821,7 +895,7 @@ public class PreviewFragment extends Fragment implements
                 Math.min(availableExtraHeightTop, availableExtraHeightBottom);
         cropRect.top -= availableExtraHeightTopAndBottom;
         cropRect.bottom += availableExtraHeightTopAndBottom;
-
+        Log.d(TAG, "Calculated cropRect = " + cropRect);
         return cropRect;
     }
 
@@ -831,22 +905,41 @@ public class PreviewFragment extends Fragment implements
      * @param destination The wallpaper destination i.e. home vs. lockscreen vs. both.
      */
     private void setCurrentWallpaper(@Destination final int destination) {
+        if (getActivity() == null) {
+            Log.w(TAG, "The activity is null, so don't set wallpaper!");
+            return;
+        }
+        if (mRawWallpaperSize == null) {
+            Log.w(TAG, "The image size is null, so don't set wallpaper!");
+            return;
+        }
+        if (Float.compare(mFullResImageView.getScale(), 0f) == 0) {
+            Log.w(TAG, "The image scale is 0, so don't set wallpaper!");
+            return;
+        }
         mWallpaperSetter.setCurrentWallpaper(getActivity(), mWallpaper, mWallpaperAsset,
                 destination, mFullResImageView.getScale(), calculateCropRect(),
                 new SetWallpaperCallback() {
                     @Override
                     public void onSuccess() {
+                        mIsWallpaperSetting = false;
                         finishActivityWithResultOk();
                     }
 
                     @Override
                     public void onError(@Nullable Throwable throwable) {
+                        mIsWallpaperSetting = false;
                         showSetWallpaperErrorDialog(destination);
                     }
                 });
     }
 
     private void finishActivityWithResultOk() {
+        if (getActivity() == null) {
+            Log.d(TAG, "The activity has been destroyed, so don't finish it again!");
+            return;
+        }
+
         try {
             Toast.makeText(
                     getActivity(), R.string.wallpaper_set_successfully_message, Toast.LENGTH_SHORT).show();
@@ -859,6 +952,11 @@ public class PreviewFragment extends Fragment implements
     }
 
     private void showSetWallpaperErrorDialog(@Destination int wallpaperDestination) {
+        if (!(getActivity() instanceof BasePreviewActivity)) {
+            Log.w(TAG, "The activity may has been destroyed: " + getActivity());
+            return;
+        }
+
         SetWallpaperErrorDialogFragment newFragment = SetWallpaperErrorDialogFragment.newInstance(
                 R.string.set_wallpaper_error_message, wallpaperDestination);
         newFragment.setTargetFragment(this, UNUSED_REQUEST_CODE);

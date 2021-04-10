@@ -27,10 +27,15 @@ import android.media.ExifInterface;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.android.wallpaper.config.Flags;
 import androidx.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
+
+import static com.android.wallpaper.util.WallpaperCropUtils.BYTE_OF_PER_PIXEL;
+import static com.android.wallpaper.util.WallpaperCropUtils.MAX_MEM_BLOCK;
+import static com.android.wallpaper.util.WallpaperCropUtils.MAX_MEM_SIZE;
 
 /**
  * Represents Asset types for which bytes can be read directly, allowing for flexible bitmap
@@ -41,6 +46,9 @@ public abstract class StreamableAsset extends Asset {
 
     private BitmapRegionDecoder mBitmapRegionDecoder;
     private Point mDimensions;
+
+    // The ratio of the displayed image size and the raw image size.
+    protected float mScale = 1.0f;
 
     /**
      * Scales and returns a new Rect from the given Rect by the given scaling factor.
@@ -184,6 +192,34 @@ public abstract class StreamableAsset extends Asset {
     }
 
     /**
+     *
+     * @return The scaled image size if it is low ram and the image memory is larger than 128M,
+     * otherwise the real image size.
+     */
+    private Point getTargetDimensions(Point dimensions) {
+        if (dimensions == null) {
+            return null;
+        }
+
+        Point targetDimensions = dimensions;
+        long imageMemSize = dimensions.x * dimensions.y * BYTE_OF_PER_PIXEL;
+        if (imageMemSize >= MAX_MEM_SIZE) {
+            Log.d(TAG, "Take a subsample from the large image: imageMemSize = " + imageMemSize);
+            double scale = Math.sqrt(imageMemSize / (double) MAX_MEM_BLOCK);
+            int inSampleSize = BitmapUtils.calculateInSampleSize(dimensions.x, dimensions.y,
+                    (int) (dimensions.x / scale), (int) (dimensions.y / scale));
+            targetDimensions = new Point(dimensions.x / inSampleSize, dimensions.y / inSampleSize);
+            mScale = 1.0f / inSampleSize;
+        }
+
+        if (Flags.DEBUG) {
+            Log.d(TAG, "getTargetDimensions: MAX_MEM_SIZE = " + MAX_MEM_SIZE + ", mScale = " + mScale
+                    + ", targetDimensions = " + targetDimensions + ", dimensions = " + dimensions);
+        }
+        return targetDimensions;
+    }
+
+    /**
      * Returns a BitmapRegionDecoder for the asset.
      */
     @Nullable
@@ -211,7 +247,12 @@ public abstract class StreamableAsset extends Asset {
     /**
      * Closes the provided InputStream and if there was an error, logs the provided error message.
      */
-    private void closeInputStream(InputStream inputStream, String errorMessage) {
+    protected void closeInputStream(InputStream inputStream, String errorMessage) {
+        if (inputStream == null) {
+            Log.w(TAG, "The input stream is null, so just return.");
+            return;
+        }
+
         try {
             inputStream.close();
         } catch (IOException e) {
@@ -260,12 +301,6 @@ public abstract class StreamableAsset extends Asset {
                 mTargetWidth = tempHeight;
             }
 
-            InputStream inputStream = openInputStream();
-            // Input stream may be null if there was an error opening it.
-            if (inputStream == null) {
-                return null;
-            }
-
             BitmapFactory.Options options = new BitmapFactory.Options();
 
             Point rawDimensions = calculateRawDimensions();
@@ -275,8 +310,21 @@ public abstract class StreamableAsset extends Asset {
             }
             options.inSampleSize = BitmapUtils.calculateInSampleSize(
                     rawDimensions.x, rawDimensions.y, mTargetWidth, mTargetHeight);
-            options.inPreferredConfig = Config.HARDWARE;
+            int maxTextureSize = BitmapUtils.computeEglMaxTextureSize();
+            if (maxTextureSize > 0
+                    && Math.max(mTargetHeight, mTargetWidth) >= maxTextureSize) {
+                options.inPreferredConfig = Config.ARGB_8888;
+            } else {
+                options.inPreferredConfig = Config.HARDWARE;
+            }
 
+            if (Flags.DEBUG) {
+                Log.d("DecodeBitmapAsyncTask", "doInBackground: rawDimensions = "
+                        + rawDimensions + ", maxTextureSize = " + maxTextureSize
+                        + ", inSampleSize = " + options.inSampleSize);
+            }
+
+            InputStream inputStream = openInputStream();
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream, null, options);
             closeInputStream(
                     inputStream, "Error closing the input stream used to decode the full bitmap");
@@ -329,8 +377,13 @@ public abstract class StreamableAsset extends Asset {
             }
 
             // Rotate crop rect if image is rotated more than 0 degrees.
+            Rect tempRect = mCropRect;
             mCropRect = CropRectRotator.rotateCropRectForExifOrientation(
                     calculateRawDimensions(), mCropRect, exifOrientation);
+            if (!mCropRect.equals(tempRect)) {
+                Log.d(TAG, "CropRect is changed, cropRect = " + mCropRect
+                        + " , raw dimensions = " + mDimensions + " , exifOrientation = " + exifOrientation);
+            }
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = BitmapUtils.calculateInSampleSize(
@@ -344,6 +397,14 @@ public abstract class StreamableAsset extends Asset {
             // InputStream.
             if (mBitmapRegionDecoder != null) {
                 try {
+                    Rect bitmapRect = new Rect(0, 0,
+                            mBitmapRegionDecoder.getWidth(), mBitmapRegionDecoder.getHeight());
+                    if (!bitmapRect.contains(mCropRect) || mCropRect.isEmpty()) {
+                        Log.w(TAG, "CropRect is outside the bitmap, cropRect = " + mCropRect
+                                + " bitmapRect = " + bitmapRect);
+                        return null;
+                    }
+
                     Bitmap bitmap = mBitmapRegionDecoder.decodeRegion(mCropRect, options);
 
                     // Rotate output bitmap if necessary because of EXIF orientation.
@@ -390,7 +451,9 @@ public abstract class StreamableAsset extends Asset {
 
         @Override
         protected void onPostExecute(Point dimensions) {
-            mReceiver.onDimensionsDecoded(dimensions);
+            // To reduce memory usage, the target dimensions maybe smaller than the raw size of
+            // the image if the device is low ram.
+            mReceiver.onDimensionsDecoded(getTargetDimensions(dimensions));
         }
     }
 }

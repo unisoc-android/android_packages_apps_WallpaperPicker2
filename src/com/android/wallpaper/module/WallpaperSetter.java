@@ -40,7 +40,7 @@ public class WallpaperSetter {
     private static final boolean PROGRESS_DIALOG_INDETERMINATE = true;
 
     private static final int UNUSED_REQUEST_CODE = 1;
-    private static final String TAG_SET_WALLPAPER_DIALOG_FRAGMENT = "set_wallpaper_dialog";
+    public static final String TAG_SET_WALLPAPER_DIALOG_FRAGMENT = "set_wallpaper_dialog";
 
     private final WallpaperPersister mWallpaperPersister;
     private final WallpaperPreferences mPreferences;

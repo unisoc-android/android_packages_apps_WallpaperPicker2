@@ -20,6 +20,7 @@ import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 
 import com.android.wallpaper.R;
+import com.android.wallpaper.model.AppResourceWallpaperInfo;
 import com.android.wallpaper.model.Category;
 import com.android.wallpaper.model.CategoryProvider;
 import com.android.wallpaper.model.CategoryReceiver;
@@ -198,7 +199,8 @@ public class DefaultCategoryProvider implements CategoryProvider {
          * "On-device wallpapers" category.
          */
         protected List<WallpaperInfo> getPrivateDeviceWallpapers() {
-            return null;
+            return AppResourceWallpaperInfo.getAll(mAppContext,
+                    mAppContext.getApplicationInfo(), R.array.wallpapers);
         }
 
         /**

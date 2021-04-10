@@ -38,6 +38,8 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:fitsSystemWindows">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+
+        <item name="panelMenuListWidth">250dip</item>
     </style>
 
     <style name="WallpaperTheme.Preview" parent="@style/Theme.AppCompat.NoActionBar">
@@ -66,7 +68,7 @@
 
     <!-- Toolbar -->
     <style name="TranslucentToolbarStyle" parent="@style/Widget.AppCompat.Toolbar">
-        <item name="android:background">@android:color/transparent</item>
+        <item name="android:background">@color/translucent_black</item>
         <item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
     </style>
 

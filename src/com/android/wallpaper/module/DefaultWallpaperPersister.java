@@ -684,8 +684,8 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
     @Override
     public void onLiveWallpaperSet() {
         android.app.WallpaperInfo currentWallpaperComponent = mWallpaperManager.getWallpaperInfo();
-        android.app.WallpaperInfo previewedWallpaperComponent =
-                mWallpaperInfoInPreview.getWallpaperComponent();
+        android.app.WallpaperInfo previewedWallpaperComponent = mWallpaperInfoInPreview == null ?
+                null : mWallpaperInfoInPreview.getWallpaperComponent();
 
         // If there is no live wallpaper set on the WallpaperManager or it doesn't match the
         // WallpaperInfo which was last previewed, then do nothing and nullify last previewed wallpaper.

@@ -18,12 +18,21 @@ package com.android.wallpaper.asset;
 import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.opengl.EGL14;
+import android.opengl.EGLConfig;
+import android.opengl.EGLContext;
+import android.opengl.EGLDisplay;
+import android.opengl.EGLSurface;
+import android.opengl.GLES20;
+import android.util.Log;
 
 /**
  * Collection of static utility methods for decoding and processing Bitmaps.
  */
 public class BitmapUtils {
     private static final float DEFAULT_CENTER_ALIGNMENT = 0.5f;
+
+    private static int sMaxTextureSize;
 
     // Suppress default constructor for noninstantiability.
     private BitmapUtils() {
@@ -116,5 +125,74 @@ public class BitmapUtils {
         return (totalVerticalPadding == 0)
                 ? DEFAULT_CENTER_ALIGNMENT
                 : paddingTop / ((float) paddingTop + paddingBottom);
+    }
+
+    /**
+     * Synchronize with git repository of AOSP: /platform/packages/apps/Camera2/
+     *
+     * Ridiculous way to read the devices maximum texture size because no other
+     * way is provided.
+     */
+    public static int computeEglMaxTextureSize() {
+        if (sMaxTextureSize <= 0) {
+            EGLDisplay eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
+            int[] majorMinor = new int[2];
+            EGL14.eglInitialize(eglDisplay, majorMinor, 0, majorMinor, 1);
+
+            int[] configAttr = {
+                    EGL14.EGL_COLOR_BUFFER_TYPE, EGL14.EGL_RGB_BUFFER,
+                    EGL14.EGL_LEVEL, 0,
+                    EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                    EGL14.EGL_SURFACE_TYPE, EGL14.EGL_PBUFFER_BIT,
+                    EGL14.EGL_NONE
+            };
+            EGLConfig[] eglConfigs = new EGLConfig[1];
+            int[] configCount = new int[1];
+            EGL14.eglChooseConfig(eglDisplay, configAttr, 0,
+                    eglConfigs, 0, 1, configCount, 0);
+
+            if (configCount[0] == 0) {
+                Log.w("WallpaperCropUtils", "computeEglMaxTextureSize() -> No EGL configurations found!");
+                return 0;
+            }
+            EGLConfig eglConfig = eglConfigs[0];
+
+            // Create a tiny surface
+            int[] eglSurfaceAttributes = {
+                    EGL14.EGL_WIDTH, 64,
+                    EGL14.EGL_HEIGHT, 64,
+                    EGL14.EGL_NONE
+            };
+            //
+            EGLSurface eglSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig,
+                    eglSurfaceAttributes, 0);
+
+            int[] eglContextAttributes = {
+                    EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                    EGL14.EGL_NONE
+            };
+
+            // Create an EGL context.
+            EGLContext eglContext = EGL14.eglCreateContext(eglDisplay, eglConfig, EGL14.EGL_NO_CONTEXT,
+                    eglContextAttributes, 0);
+            EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext);
+
+            // Actually read the Gl_MAX_TEXTURE_SIZE into the array.
+            int[] maxSize = new int[1];
+            GLES20.glGetIntegerv(GLES20.GL_MAX_TEXTURE_SIZE, maxSize, 0);
+            int result = maxSize[0];
+
+            // Tear down the surface, context, and display.
+            EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE,
+                    EGL14.EGL_NO_CONTEXT);
+            EGL14.eglDestroySurface(eglDisplay, eglSurface);
+            EGL14.eglDestroyContext(eglDisplay, eglContext);
+            EGL14.eglTerminate(eglDisplay);
+
+            sMaxTextureSize = result;
+        }
+
+        // Return the computed max size.
+        return sMaxTextureSize;
     }
 }

@@ -110,13 +110,17 @@ public class IndividualPickerActivity extends BaseActivity {
         toolbar.getNavigationIcon().setTint(getColor(R.color.toolbar_icon_color));
         toolbar.getNavigationIcon().setAutoMirrored(true);
 
+        boolean isInMultiWindowMode = isInMultiWindowMode();
         getWindow().getDecorView().setSystemUiVisibility(
                 getWindow().getDecorView().getSystemUiVisibility()
                         | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         getWindow().getDecorView().setOnApplyWindowInsetsListener((view, windowInsets) -> {
-            view.setPadding(view.getPaddingLeft(), windowInsets.getSystemWindowInsetTop(),
-                    view.getPaddingRight(), view.getBottom());
+            view.setPadding(
+                    isInMultiWindowMode ? windowInsets.getSystemWindowInsetLeft() : view.getPaddingLeft(),
+                    windowInsets.getSystemWindowInsetTop(),
+                    isInMultiWindowMode ? windowInsets.getSystemWindowInsetRight() : view.getPaddingRight(),
+                    view.getPaddingBottom());
             // Consume only the top inset (status bar), to let other content in the Activity consume
             // the nav bar (ie, by using "fitSystemWindows")
             if (BuildCompat.isAtLeastQ()) {

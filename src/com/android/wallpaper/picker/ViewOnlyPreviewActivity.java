@@ -62,9 +62,11 @@ public class ViewOnlyPreviewActivity extends BasePreviewActivity {
                     wallpaper,
                     PreviewFragment.MODE_VIEW_ONLY,
                     testingModeEnabled);
-            fm.beginTransaction()
-                    .add(R.id.fragment_container, fragment)
-                    .commit();
+            if (!fm.isStateSaved()) {
+                fm.beginTransaction()
+                        .add(R.id.fragment_container, fragment)
+                        .commit();
+            }
         }
     }
 

@@ -30,6 +30,7 @@ import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -230,6 +231,17 @@ public class TopLevelPickerActivity extends BaseActivity implements WallpapersUi
     @Override
     public void requestExternalStoragePermission(PermissionChangedListener listener) {
         mDelegate.requestExternalStoragePermission(listener);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            // Due to the failure to resolve attribute, the app will crash when dealing with the
+            // KEYCODE_MENU in {@link AppCompatDelegateImpl#onKeyUp}.
+            // So consume the KEYCODE_MENU event here.
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
     }
 
     /**

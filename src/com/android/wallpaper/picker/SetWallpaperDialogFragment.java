@@ -18,13 +18,17 @@ package com.android.wallpaper.picker;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ContextThemeWrapper;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.android.wallpaper.R;
 import com.android.wallpaper.compat.ButtonDrawableSetterCompat;
@@ -35,6 +39,7 @@ import com.android.wallpaper.module.WallpaperPersister;
  * choose whether to set the wallpaper on the home screen, lock screen, or both.
  */
 public class SetWallpaperDialogFragment extends DialogFragment {
+    private static final String TAG = "SetWallpaperDialogFragm";
 
     private Button mSetHomeWallpaperButton;
     private Button mSetLockWallpaperButton;
@@ -54,6 +59,9 @@ public class SetWallpaperDialogFragment extends DialogFragment {
         super.onCreateDialog(savedInstanceState);
 
         Context context = getContext();
+        if (mTitleResId == 0) {
+            mTitleResId = R.string.set_wallpaper_dialog_message;
+        }
 
         @SuppressWarnings("RestrictTo")
         View layout =
@@ -99,6 +107,26 @@ public class SetWallpaperDialogFragment extends DialogFragment {
         return dialog;
     }
 
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        if (mListener != null) {
+            mListener.onDialogAttached();
+        } else {
+            Log.d(TAG, "onAttach: mListener is null!");
+        }
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        if (mListener != null) {
+            mListener.onDialogDetached();
+        } else {
+            Log.d(TAG, "onDetach: mListener is null!");
+        }
+    }
+
     public void setHomeOptionAvailable(boolean homeAvailable) {
         mHomeAvailable = homeAvailable;
         updateButtonsVisibility();
@@ -132,5 +160,14 @@ public class SetWallpaperDialogFragment extends DialogFragment {
      */
     public interface Listener {
         void onSet(int destination);
+        void onDialogAttached();
+        void onDialogDetached();
+    }
+
+    @Override
+    public void show(FragmentManager manager, String tag) {
+        FragmentTransaction ft = manager.beginTransaction();
+        ft.add(this, tag);
+        ft.commitAllowingStateLoss();
     }
 }

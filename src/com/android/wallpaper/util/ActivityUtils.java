@@ -18,6 +18,8 @@ package com.android.wallpaper.util;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -48,5 +50,10 @@ public final class ActivityUtils {
                     + ". Make sure to create a MAIN intent-filter for the corresponding activity "
                     + "or use the exported attribute for this activity.", e);
         }
+    }
+
+    public static boolean isLandscape() {
+        return Resources.getSystem().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
     }
 }

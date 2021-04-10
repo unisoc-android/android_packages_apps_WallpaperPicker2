@@ -26,6 +26,11 @@ import android.view.Display;
  */
 public final class WallpaperCropUtils {
 
+    public static final long MAX_MEM_SIZE = 1000 * 1000 *
+            SystemPropertiesUtils.getInt("ro.wallpaper.mem.maxsize", 256);
+    public static final long MAX_MEM_BLOCK = (long) ((MAX_MEM_SIZE / 4.0f) + 0.5f);
+    public static final int BYTE_OF_PER_PIXEL = 4;
+
     private static final float WALLPAPER_SCREENS_SPAN = 2f;
     private static final float ASPECT_RATIO_LANDSCAPE = 16 / 10f;
     private static final float ASPECT_RATIO_PORTRAIT = 10 / 16f;
